@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Palette observed from the reference dark theme, kept identical for parity. -->
+    <color name="colorPrimary">#1b1b1b</color>
+    <color name="colorPrimaryDark">#1b1b1b</color>
+    <color name="colorAccent">#fdfdfd</color>
+    <color name="linkText">#fb1a67</color>
+    <color name="linkTextBlue">#2196f3</color>
+    <color name="windowBg">#0c0c10</color>
+    <color name="panelScrim">#df000000</color>
+    <color name="panelScrimLight">#16000000</color>
+    <color name="textPrimary">#ffffffff</color>
+    <color name="textSecondary">#b3ffffff</color>
+    <color name="textDim">#8a000000</color>
+    <color name="accentGreen">#4cd964</color>
+    <color name="accentRed">#ff3b30</color>
+    <color name="divider">#33ffffff</color>
+</resources>

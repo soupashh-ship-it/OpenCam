@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.opencam.view.EdgeToEdgeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/windowBg">
+
+    <SurfaceView
+        android:id="@+id/camera_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center" />
+
+    <!-- top-left connection / stats readout -->
+    <LinearLayout
+        android:id="@+id/detail_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start|top"
+        android:layout_margin="12dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/client_outdated_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawablePadding="4dp"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:textAllCaps="true"
+            android:textColor="@color/linkText"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+
+            <ImageView
+                android:id="@+id/tally_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/hash"
+                android:src="@drawable/ic_tally_idle" />
+
+            <TextView
+                android:id="@+id/connection_info_peer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawablePadding="4dp"
+                android:gravity="center_vertical"
+                android:textColor="@color/colorAccent"
+                android:visibility="invisible" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/wifi_remote_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:drawablePadding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/colorAccent"
+            android:visibility="invisible" />
+
+        <TextView
+            android:id="@+id/video_stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/linkText"
+            android:visibility="invisible" />
+    </LinearLayout>
+
+    <!-- top-right action bar -->
+    <LinearLayout
+        android:id="@+id/button_bar_top"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_margin="4dp"
+        android:padding="4dp">
+
+        <ImageButton
+            android:id="@+id/mic_toggle"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/mute_sound"
+            android:src="@drawable/ic_mic_on" />
+
+        <ImageButton
+            android:id="@+id/camera_crop"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/c"
+            android:src="@drawable/ic_crop_sm" />
+
+        <ImageButton
+            android:id="@+id/grid_toggle"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/hash"
+            android:src="@drawable/ic_grid" />
+
+        <ImageButton
+            android:id="@+id/camera_vflip"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/v"
+            android:src="@drawable/ic_flip_v" />
+
+        <ImageButton
+            android:id="@+id/camera_hflip"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/m"
+            android:src="@drawable/ic_flip_h" />
+
+        <ImageButton
+            android:id="@+id/settings_button"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/settings"
+            android:src="@drawable/ic_gear" />
+
+        <ImageButton
+            android:id="@+id/camera_more_toggle"
+            style="@style/OverlayIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/other"
+            android:src="@drawable/ic_info" />
+
+        <Button
+            android:id="@+id/stop_button"
+            style="@style/OverlayLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/stop" />
+    </LinearLayout>
+
+    <!-- bottom stack: manual adjust panel + camera control bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:padding="4dp">
+
+        <LinearLayout
+            android:id="@+id/manual_adjust"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/panelScrimLight"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_horizontal"
+            android:paddingStart="48dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="48dp"
+            android:paddingBottom="12dp"
+            android:visibility="gone">
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <Button
+                    android:id="@+id/auto_button"
+                    style="@style/OverlayLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/auto" />
+
+                <Button
+                    android:id="@+id/lock_button"
+                    style="@style/OverlayLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/seek_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="2dp"
+                    android:textColor="@color/linkText"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/seek_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="1000" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/button_bar_bottom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:gravity="start"
+            android:visibility="invisible">
+
+            <ImageButton
+                android:id="@+id/camera_swap_button"
+                style="@style/OverlayIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/c"
+                android:src="@drawable/ic_camera_swap" />
+
+            <ImageButton
+                android:id="@+id/camera_flash"
+                style="@style/OverlayIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/led"
+                android:src="@drawable/ic_flash_off" />
+
+            <Button
+                android:id="@+id/wb_button"
+                style="@style/OverlayLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/wb" />
+
+            <Button
+                android:id="@+id/iso_button"
+                style="@style/OverlayLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/iso" />
+
+            <Button
+                android:id="@+id/ss_button"
+                style="@style/OverlayLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ss" />
+
+            <Button
+                android:id="@+id/ev_button"
+                style="@style/OverlayLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ev" />
+
+            <Button
+                android:id="@+id/af_button"
+                style="@style/OverlayLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/af" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/zoom_button"
+                style="@style/OverlayLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawableEnd="@drawable/ic_zoom"
+                android:text="@string/zoom"
+                android:textAllCaps="false" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- centre: start panel and connect hint -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="48dp">
+
+        <Button
+            android:id="@+id/btn_perm_error"
+            style="@style/Borderless"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:drawableStart="@drawable/ic_info"
+            android:drawablePadding="4dp"
+            android:text="@string/e_perms"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/info_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="@drawable/white_border">
+
+            <TextView
+                android:id="@+id/info_text"
+                style="@style/FontBold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name" />
+
+            <TextView
+                android:id="@+id/info_detail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/idle_hint"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_start_stop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawableStart="@drawable/ic_play"
+                    android:drawablePadding="6dp"
+                    android:text="@string/start" />
+
+                <Button
+                    android:id="@+id/btn_open_settings"
+                    style="@style/Borderless"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/settings" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/connect_hint_img"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="32dp"
+            android:contentDescription="@string/pc_webcam"
+            android:src="@drawable/ic_laptop_sm" />
+
+        <TextView
+            android:id="@+id/connect_hint_txt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:gravity="center_horizontal"
+            android:text="@string/connect_hint"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btn_app_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="@string/need_help"
+            android:visibility="invisible" />
+    </LinearLayout>
+
+    <!-- dimmed overlay, unlock by sliding -->
+    <LinearLayout
+        android:id="@+id/screen_lock_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/panelScrim"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/screen_lock_title"
+            style="@style/FontBold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:visibility="invisible" />
+
+        <SeekBar
+            android:id="@+id/screen_lock_slider"
+            android:layout_width="120dp"
+            android:layout_height="32dp"
+            android:layout_marginTop="8dp"
+            android:clickable="false"
+            android:thumb="@drawable/ic_lock_on"
+            android:visibility="invisible" />
+    </LinearLayout>
+
+</app.opencam.view.EdgeToEdgeLayout>

@@ -1,0 +1,18 @@
+* text=auto
+
+# Shell scripts stay LF (gradlew is executed under bash)
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Windows scripts stay CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.jar binary

@@ -1,0 +1,28 @@
+# ── Build output ──────────────────────────────────────────────────────────
+dist/
+bin/
+obj/
+build/
+
+# ── Android / Gradle ──────────────────────────────────────────────────────
+.gradle/
+local.properties
+keystore.properties
+*.jks
+*.keystore
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ── Windows / .NET / MSVC ─────────────────────────────────────────────────
+*.user
+*.suo
+.vs/
+
+# ── Editors / OS ──────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+Thumbs.db
+Desktop.ini
+.DS_Store

@@ -1,0 +1,428 @@
+<Window x:Class="OpenCam.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OpenCam"
+        Height="840"
+        Width="1320"
+        MinHeight="600"
+        MinWidth="1000"
+        Background="{StaticResource WindowBrush}"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ============================ header ============================ -->
+        <Border Grid.Row="0"
+                Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16,0"
+                Height="54">
+            <DockPanel LastChildFill="False" VerticalAlignment="Center">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="OpenCam"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="free · no ads · no premium"
+                               Style="{StaticResource Caption}"
+                               Margin="12,1,0,0"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{StaticResource ControlBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="13"
+                            Padding="11,5">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="LinkDot"
+                                     Width="8" Height="8"
+                                     Fill="{StaticResource TextDimBrush}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock x:Name="LinkText"
+                                       Text="Disconnected"
+                                       FontSize="12"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Width="1" Height="20"
+                            Background="{StaticResource DividerBrush}"
+                            Margin="12,0" />
+
+                    <ToggleButton x:Name="BtnVirtualCamera"
+                                  Content="Virtual camera"
+                                  MinWidth="150"
+                                  Click="OnVirtualCameraClicked" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ========================== device bar ========================== -->
+        <Border Grid.Row="1"
+                Background="{StaticResource WindowBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <DockPanel LastChildFill="True">
+                <!-- Right-docked children are declared right to left. -->
+                <Button x:Name="BtnDisconnect"
+                        DockPanel.Dock="Right"
+                        Content="Disconnect"
+                        Width="110"
+                        Margin="8,0,0,0"
+                        IsEnabled="False"
+                        Click="OnDisconnectClicked" />
+                <Button x:Name="BtnConnect"
+                        DockPanel.Dock="Right"
+                        Content="Connect"
+                        Width="100"
+                        Style="{StaticResource PrimaryButton}"
+                        Click="OnConnectClicked" />
+                <Border DockPanel.Dock="Right" Width="1" Height="20"
+                        Background="{StaticResource DividerBrush}"
+                        Margin="12,0" />
+                <Button x:Name="BtnAddManual"
+                        DockPanel.Dock="Right"
+                        Content="Add"
+                        Width="64"
+                        Margin="8,0,0,0"
+                        Click="OnAddManualClicked"
+                        ToolTip="Use this address and connect" />
+                <TextBox x:Name="TextManualAddress"
+                         DockPanel.Dock="Right"
+                         Width="170"
+                         Text="192.168.1.10:4747"
+                         KeyDown="OnAddressKeyDown"
+                         ToolTip="host:port for a phone that discovery cannot see" />
+                <Border DockPanel.Dock="Right" Width="1" Height="20"
+                        Background="{StaticResource DividerBrush}"
+                        Margin="12,0" />
+                <Button x:Name="BtnRefresh"
+                        DockPanel.Dock="Right"
+                        Content="Scan"
+                        Width="80"
+                        Click="OnRefreshClicked"
+                        ToolTip="Rescan the network for phones" />
+
+                <Grid>
+                    <ComboBox x:Name="ComboDevices"
+                              MinWidth="170"
+                              VerticalAlignment="Center"
+                              ToolTip="Phones found on the network"
+                              SelectionChanged="OnDeviceSelected">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock VerticalAlignment="Center">
+                                    <Run Text="{Binding Name}" />
+                                    <Run Text="  ·  " Foreground="{StaticResource TextDimBrush}" />
+                                    <Run Text="{Binding Address}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <Run Text=":" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <Run Text="{Binding Port}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Text="Searching for phones…"
+                               FontFamily="{StaticResource UiFont}"
+                               FontSize="13"
+                               Foreground="{StaticResource TextDimBrush}"
+                               Margin="12,0,0,0"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=ComboDevices}" Value="-1">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================ content ============================ -->
+        <Grid Grid.Row="2" Margin="16,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="360" />
+            </Grid.ColumnDefinitions>
+
+            <!-- preview -->
+            <Border Grid.Column="0"
+                    Background="#000000"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Grid>
+                    <Image x:Name="PreviewImage"
+                           Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="LowQuality" />
+
+                    <TextBlock x:Name="PreviewPlaceholder"
+                               Text="Not connected&#x0a;Pick a phone above, then press Connect"
+                               Foreground="{StaticResource TextDimBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"
+                               FontSize="14"
+                               LineHeight="22" />
+
+                    <Border HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Margin="14"
+                            Background="#CC0B0C10"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12,9">
+                        <StackPanel>
+                            <TextBlock x:Name="OverlayTitle"
+                                       Text="Disconnected"
+                                       FontWeight="SemiBold" />
+                            <TextBlock x:Name="OverlayStats"
+                                       Style="{StaticResource Caption}"
+                                       Margin="0,4,0,0"
+                                       Text="—" />
+                            <TextBlock x:Name="OverlayClientStats"
+                                       Style="{StaticResource Caption}"
+                                       Margin="0,2,0,0"
+                                       Text="—" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="14"
+                            Background="#CC0B0C10"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="11,7">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="TallyLamp"
+                                     Width="9" Height="9"
+                                     Fill="{StaticResource TextDimBrush}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock x:Name="TallyText"
+                                       Text="idle"
+                                       FontSize="12"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- controls -->
+            <ScrollViewer Grid.Column="1"
+                          Margin="14,0,0,0"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,2,0">
+
+                    <Border Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <TextBlock Text="VIDEO SOURCE" Style="{StaticResource SectionHeader}" />
+
+                            <TextBlock Text="Camera" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                            <ComboBox x:Name="ComboCamera" SelectionChanged="OnCameraSelected" />
+
+                            <TextBlock Text="Resolution" Style="{StaticResource FieldLabel}" Margin="0,12,0,4" />
+                            <ComboBox x:Name="ComboResolution" SelectionChanged="OnResolutionSelected" />
+
+                            <TextBlock Text="Frame rate" Style="{StaticResource FieldLabel}" Margin="0,12,0,4" />
+                            <ComboBox x:Name="ComboFps"
+                                      SelectionChanged="OnFpsSelected"
+                                      ToolTip="Frame rate is chosen on the phone" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="ACTIONS" Style="{StaticResource SectionHeader}" />
+                            <WrapPanel>
+                                <ToggleButton x:Name="BtnMic" Content="Microphone" Margin="0,0,8,8"
+                                              Click="OnMicClicked" />
+                                <ToggleButton x:Name="BtnTorch" Content="Torch" Margin="0,0,8,8"
+                                              Click="OnTorchClicked" />
+                                <ToggleButton x:Name="BtnAeLock" Content="AE lock" Margin="0,0,8,8"
+                                              Click="OnAeLockClicked" />
+                                <ToggleButton x:Name="BtnWbLock" Content="WB lock" Margin="0,0,8,8"
+                                              Click="OnWbLockClicked" />
+                                <Button x:Name="BtnAutofocus" Content="Autofocus" Margin="0,0,8,8"
+                                        Click="OnAutofocusClicked" />
+                                <Button x:Name="BtnResetImage" Content="Reset image" Margin="0,0,8,0"
+                                        Click="OnResetImageClicked" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="IMAGE" Style="{StaticResource SectionHeader}" />
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="126" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="50" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Zoom" Style="{StaticResource FieldLabel}" />
+                                <Slider Grid.Column="1" x:Name="SliderZoom" Maximum="1"
+                                        ValueChanged="OnZoomChanged" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" x:Name="LabelZoom"
+                                           Style="{StaticResource ValueText}" Text="0.00" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="126" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="50" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Exposure" Style="{StaticResource FieldLabel}" />
+                                <Slider Grid.Column="1" x:Name="SliderEv" Minimum="-4" Maximum="4"
+                                        ValueChanged="OnEvChanged" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" x:Name="LabelEv"
+                                           Style="{StaticResource ValueText}" Text="0.0" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="126" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="50" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="ISO" Style="{StaticResource FieldLabel}"
+                                           ToolTip="0 = auto" />
+                                <Slider Grid.Column="1" x:Name="SliderIso" Minimum="0" Maximum="6400"
+                                        ValueChanged="OnIsoChanged" VerticalAlignment="Center"
+                                        ToolTip="0 = auto" />
+                                <TextBlock Grid.Column="2" x:Name="LabelIso"
+                                           Style="{StaticResource ValueText}" Text="0" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="126" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="50" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Shutter ms" Style="{StaticResource FieldLabel}"
+                                           ToolTip="0 = auto" />
+                                <Slider Grid.Column="1" x:Name="SliderShutter" Minimum="0" Maximum="500"
+                                        ValueChanged="OnShutterChanged" VerticalAlignment="Center"
+                                        ToolTip="0 = auto" />
+                                <TextBlock Grid.Column="2" x:Name="LabelShutter"
+                                           Style="{StaticResource ValueText}" Text="0" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="126" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="50" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Manual focus" Style="{StaticResource FieldLabel}" />
+                                <Slider Grid.Column="1" x:Name="SliderFocus" Minimum="0" Maximum="1"
+                                        ValueChanged="OnFocusChanged" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" x:Name="LabelFocus"
+                                           Style="{StaticResource ValueText}" Text="0.00" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="126" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="50" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="White balance" Style="{StaticResource FieldLabel}" />
+                                <Slider Grid.Column="1" x:Name="SliderWbLevel" Minimum="0" Maximum="1"
+                                        ValueChanged="OnWbLevelChanged" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" x:Name="LabelWbLevel"
+                                           Style="{StaticResource ValueText}" Text="0.50" />
+                            </Grid>
+
+                            <TextBlock Text="White balance preset" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                            <ComboBox x:Name="ComboWbMode" SelectionChanged="OnWbModeSelected" />
+
+                            <TextBlock Text="Autofocus mode" Style="{StaticResource FieldLabel}" Margin="0,12,0,4" />
+                            <ComboBox x:Name="ComboAfMode" SelectionChanged="OnAfModeSelected" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="DEVICE" Style="{StaticResource SectionHeader}" />
+                            <TextBlock x:Name="InfoName" Text="No device" FontWeight="SemiBold" />
+                            <TextBlock x:Name="InfoAddress" Style="{StaticResource Caption}"
+                                       Margin="0,4,0,0" Text="—" />
+                            <TextBlock x:Name="InfoBattery" Style="{StaticResource Caption}"
+                                       Margin="0,2,0,0" Text="—" />
+                            <TextBlock x:Name="InfoStream" Style="{StaticResource Caption}"
+                                       Margin="0,2,0,0" Text="—" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="OUTPUT" Style="{StaticResource SectionHeader}" />
+
+                            <TextBlock Text="Virtual camera" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="TextVirtualCameraStatus"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource Caption}"
+                                       Margin="0,2,0,0"
+                                       Text="Checking…" />
+
+                            <TextBlock Text="Audio" Style="{StaticResource FieldLabel}" Margin="0,12,0,0" />
+                            <TextBlock x:Name="TextAudioStatus"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource Caption}"
+                                       Margin="0,2,0,0"
+                                       Text="Not connected" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- =========================== status bar =========================== -->
+        <Border Grid.Row="3"
+                Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,7">
+            <DockPanel LastChildFill="False">
+                <TextBlock x:Name="StatusText"
+                           DockPanel.Dock="Left"
+                           Text="Ready"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+                <TextBlock x:Name="StatusRight"
+                           DockPanel.Dock="Right"
+                           Style="{StaticResource Caption}"
+                           Margin="0"
+                           Text="—"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

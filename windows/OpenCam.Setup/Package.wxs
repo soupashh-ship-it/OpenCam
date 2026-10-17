@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  OpenCam installer.
+
+  What it lays down:
+    * the published client, self-contained, under Program Files\OpenCam
+    * the virtual camera media source, in the same folder so the frame server's
+      service accounts can read it
+    * the COM registration the frame server needs, under HKLM (this is why the
+      package installs per machine and asks for elevation)
+    * a Windows Firewall exception for the client, so finding the phone does not
+      stop at the Windows security prompt on the first run
+    * a Start-menu entry
+
+  Double-click, install, use: the wizard walks through the install and its
+  finish page offers to start the app. Uninstall removes everything again - the
+  MSI owns the registry values, the firewall exception and the shortcut, so
+  nothing is left behind in the camera list, the firewall or the Start menu.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
+
+  <Package Name="OpenCam"
+           Manufacturer="OpenCam"
+           Version="1.0.1"
+           UpgradeCode="7B2F1C6A-9D34-4E58-8A1B-2C7D6E9F30A1"
+           Scope="perMachine">
+
+    <SummaryInformation Description="OpenCam - use your Android phone as a webcam" />
+
+    <!-- Used by Add/Remove Programs and by the Start-menu entry below, so the
+         shortcut does not fall back to the default Windows icon. -->
+    <Icon Id="OpenCamIcon" SourceFile="..\OpenCam.Client\OpenCam.ico" />
+    <Property Id="ARPPRODUCTICON" Value="OpenCamIcon" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of OpenCam is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Shown by the welcome page in the place of a licence agreement, of
+         which there is none. -->
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+    <!-- The finish page offers to start the app, checked by default. The
+         unelevated variant is deliberate: the install runs elevated and the
+         client should not inherit that. The target is resolved in the UI
+         sequence, after CostFinalize has turned INSTALLFOLDER into a path. -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch OpenCam" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <SetProperty Id="WixUnelevatedShellExecTarget"
+                 Value="[INSTALLFOLDER]OpenCam.exe"
+                 Sequence="ui"
+                 After="CostFinalize" />
+    <CustomAction Id="LaunchApplication"
+                  BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixUnelevatedShellExec"
+                  Execute="immediate"
+                  Return="ignore" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_Minimal" />
+      <Publish Dialog="ExitDialog"
+               Control="Finish"
+               Event="DoAction"
+               Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="OpenCam" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="OpenCamMenuFolder" Name="OpenCam" />
+    </StandardDirectory>
+
+    <!-- The published client plus the media source, harvested from the publish
+         directory so no file list has to be maintained by hand. OpenCam.exe is
+         excluded here because it is authored below: the firewall exception has
+         to name it. -->
+    <ComponentGroup Id="ApplicationFiles">
+      <Files Directory="INSTALLFOLDER" Include="$(PublishDir)\**">
+        <Exclude Files="$(PublishDir)\OpenCam.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <Component Id="ClientExecutable"
+               Directory="INSTALLFOLDER"
+               Guid="9F4B2D18-6C3A-4E75-B0D9-5A1C8E7F2B46">
+      <File Id="OpenCamExe" Source="$(PublishDir)\OpenCam.exe" KeyPath="yes" />
+
+      <!-- Phone discovery answers mDNS, so without this the first run would
+           stop at the Windows security prompt. Local subnet only, and group
+           policy that blocks the rule must not fail the install. -->
+      <fw:FirewallException Id="OpenCamFirewall"
+                            Name="OpenCam"
+                            File="OpenCamExe"
+                            Description="Lets OpenCam find phones on the local network"
+                            Scope="localSubnet"
+                            IgnoreFailure="yes" />
+    </Component>
+
+    <Component Id="VirtualCameraRegistration"
+               Directory="INSTALLFOLDER"
+               Guid="2A9E7C41-5B6D-4F82-91C3-4D8E6A0B72C5">
+      <!--
+        The media source is activated by CLSID from the frame server, which runs
+        as a service and therefore only reads HKLM. The value points into
+        INSTALLFOLDER, so it follows the install and is removed on uninstall.
+      -->
+      <RegistryKey Root="HKLM" Key="SOFTWARE\Classes\CLSID\{6F1B4C93-7A2E-4D71-9C58-2E4A0B7D5F31}">
+        <RegistryValue Type="string" Value="OpenCam Virtual Camera" />
+        <RegistryKey Key="InprocServer32">
+          <RegistryValue Type="string" Value="[INSTALLFOLDER]OpenCamVirtualCam.dll" />
+          <RegistryValue Name="ThreadingModel" Type="string" Value="Both" />
+        </RegistryKey>
+      </RegistryKey>
+    </Component>
+
+    <DirectoryRef Id="OpenCamMenuFolder">
+      <Component Id="StartMenuShortcut"
+                 Guid="4C1D8E72-3A5B-4F60-8D92-7B6E5C0A1D34">
+        <Shortcut Id="OpenCamStartMenuShortcut"
+                  Name="OpenCam"
+                  Description="Use your phone as a webcam"
+                  Target="[INSTALLFOLDER]OpenCam.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="OpenCamIcon" />
+        <RemoveFolder Id="RemoveOpenCamMenuFolder" Directory="OpenCamMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\OpenCam"
+                       Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="MainFeature" Title="OpenCam" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" />
+      <ComponentRef Id="ClientExecutable" />
+      <ComponentRef Id="VirtualCameraRegistration" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+  </Package>
+</Wix>

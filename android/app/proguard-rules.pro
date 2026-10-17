@@ -1,0 +1,3 @@
+-keep class app.opencam.** { *; }
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.**

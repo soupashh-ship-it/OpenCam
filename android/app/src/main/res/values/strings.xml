@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenCam</string>
+    <string name="app_headline">Use your phone as a webcam for your computer.</string>
+    <string name="welcome_to_app">Welcome to OpenCam</string>
+    <string name="get_started">Get started</string>
+    <string name="next_c">Next</string>
+    <string name="done_c">Done</string>
+    <string name="dash">-</string>
+
+    <string name="pc_webcam">PC Webcam</string>
+    <string name="obs_camera">OBS Camera</string>
+    <string name="info_text_client">OpenCam for Windows receives the camera stream and exposes it as a virtual webcam for Zoom, Teams, Discord, OBS and anything else that reads a camera.</string>
+    <string name="info_text_plugin">The same stream feeds the OpenCam OBS plugin when you would rather composite it inside OBS.</string>
+    <string name="obs_plugin_link">opencam.app/obs</string>
+
+    <string name="connect_hint">Start a server on this phone, then connect from the OpenCam desktop app using the address above.</string>
+    <string name="idle_hint">Press Start to begin streaming.</string>
+
+    <string name="stop">Stop</string>
+    <string name="start">Start</string>
+    <string name="settings">Settings</string>
+    <string name="about">About</string>
+    <string name="need_help">Need help?</string>
+    <string name="other">More</string>
+    <string name="e_perms">Camera and microphone permission are required</string>
+    <string name="mute_sound">Mute sound</string>
+    <string name="c">Camera</string>
+    <string name="hash">Grid</string>
+    <string name="v">Flip vertically</string>
+    <string name="m">Flip horizontally</string>
+    <string name="led">Flash</string>
+    <string name="wb">WB</string>
+    <string name="iso">ISO</string>
+    <string name="ss">SS</string>
+    <string name="ev">EV</string>
+    <string name="af">AF</string>
+    <string name="mf">MF</string>
+    <string name="zoom">Zoom</string>
+    <string name="dim">Dim</string>
+    <string name="auto">Auto</string>
+    <string name="lock">Lock</string>
+    <string name="unlock">Unlock</string>
+    <string name="reset">Reset</string>
+
+    <string name="server_running">Server running</string>
+    <string name="server_stopped">Server stopped</string>
+    <string name="notification_title">OpenCam is streaming</string>
+    <string name="notification_text">Camera and microphone are shared on port %1$d</string>
+    <string name="notification_stop">Stop</string>
+
+    <!-- Settings -->
+    <string name="pref_connection">Connection</string>
+    <string name="pref_port">Server port</string>
+    <string name="pref_port_summary">Clients connect to this port. Default 4747.</string>
+    <string name="pref_video">Video</string>
+    <string name="pref_resolution">Resolution</string>
+    <string name="pref_fps">Frame rate</string>
+    <string name="pref_camera">Camera</string>
+    <string name="pref_camera_back">Back</string>
+    <string name="pref_camera_front">Front</string>
+    <string name="pref_audio">Audio</string>
+    <string name="pref_audio_enabled">Send microphone audio</string>
+    <string name="pref_mirror">Mirror front camera</string>
+    <string name="pref_mirror_summary">Mirrors the preview and the outgoing stream.</string>
+    <string name="pref_keep_awake">Keep screen awake</string>
+    <string name="pref_keep_awake_summary">Prevents the display from sleeping while streaming.</string>
+    <string name="pref_discovery">Advertise on the network</string>
+    <string name="pref_discovery_summary">Publishes an mDNS service so desktop clients find this phone automatically.</string>
+    <string name="pref_defaults">Restore defaults</string>
+    <string name="pref_defaults_summary">Reset every setting to its initial value.</string>
+
+    <string name="about_body">OpenCam is a free, open webcam bridge.\n\nNo ads. No premium tier. No account. Every feature is available to everyone.\n\nProtocol compatible with DroidCam clients and servers so either side can replace the other.</string>
+    <string name="version_fmt">Version %1$s</string>
+</resources>

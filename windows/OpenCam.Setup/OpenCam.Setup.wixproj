@@ -1,0 +1,24 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <PropertyGroup>
+    <OutputName>OpenCamSetup</OutputName>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <!-- Where build.bat leaves the published client plus the media source. -->
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\dist\app</PublishDir>
+    <DefineConstants>PublishDir=$(PublishDir)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The WixUI_Minimal wizard, so a double-click walks through install and
+         offers to start the app on the finish page. -->
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+    <!-- WixUnelevatedShellExec, which is what starts the app from that page
+         without handing it the installer's elevated token. -->
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <!-- The firewall exception for the client, added with the install and
+         removed with the uninstall. -->
+    <PackageReference Include="WixToolset.Firewall.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+</Project>

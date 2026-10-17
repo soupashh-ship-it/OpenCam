@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>OpenCam</AssemblyName>
+    <RootNamespace>OpenCam.Client</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>1.0.1</Version>
+    <Product>OpenCam</Product>
+    <AssemblyTitle>OpenCam</AssemblyTitle>
+    <Company>OpenCam</Company>
+    <Description>Use your phone as a webcam. Free, no ads, no premium tier.</Description>
+    <!-- Same mark as the Android launcher, so the two halves look like one product
+         in the taskbar, the Start menu and Add/Remove Programs. -->
+    <ApplicationIcon>OpenCam.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+
+</Project>
