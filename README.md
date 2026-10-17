@@ -570,3 +570,9 @@ tests/protocol_conformance.py 54-check endpoint conformance test
 tests/smoke_framing.py        packet-shape smoke test (10 checks)
 tests/fake_phone.py           stand-in phone for framing experiments
 ```
+
+---
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).
