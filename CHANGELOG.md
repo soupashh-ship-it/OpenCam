@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **DroidCam 7.2.1 AVC playback** — the H.264 config packet carried only the
+  SPS on encoders that report `csd-0` and `csd-1` separately, so the client
+  logged `error decoding video` and showed no picture. The server now
+  concatenates every codec-specific-data buffer, producing an SPS+PPS config.
+- **Framed-stream timestamps** — AVC, JPEG and AAC packets now carry the
+  microsecond presentation time the stock client expects instead of a 1, 2, 3
+  packet counter.
+
 ## [1.0.1] — 2026-10-17 · first public release
 
 ### Added

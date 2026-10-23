@@ -185,27 +185,56 @@ What remains unverified is only the elevated half: the `HKLM` write, the
 firewall rule and the camera appearing in an application's camera picker. That
 is one `OpenCamSetup.msi` double-click on a normal machine.
 
-### Interop with the stock DroidCam client — full session, verified
+### Interop with the stock DroidCam client 7.2.1 — AVC video verified
 
-The real client (DroidCam Client v6.5.3, run from the files its own installer
-unpacks — nothing installed for the test) streams video and audio from OpenCam
-for Android on the emulator:
+The installed DroidCam Client 7.2.1 drives OpenCam for Android on
+`emulator-5554` through an ADB forward. The client's source uses AVC at
+1280x720, USB type, and audio enabled:
 
 ```
-our server   127.0.0.1 GET /v5/video/avc/1280x720/port/…/nonce/5912/   (bare request)
+our server   127.0.0.1 GET /v5/video/avc/1280x720/port/0/os/win10.0.26300/obs//client/700/nonce/5912/
 our server   127.0.0.1 GET /v2/audio
 our server   127.0.0.1 PUT /v1/tally/program/
-client       [DroidCamOBS] read_frame: got config: 22      (SPS+PPS, 1280x720)
+client       [DroidCamOBS] read_frame: got config: 32      (SPS+PPS, 1280x720)
 client       [DroidCamOBS] use hw: 1
 client       DroidCam_Connect: sdk_gphone64_x86_64 [USB] (emulator-5554)
 client       [DroidCamOBS] read_frame: got config: 2       (AAC AudioSpecificConfig)
 client       [DroidCamOBS] audio: sample_rate=48000 channels=1
-client       adding 46 milliseconds of audio buffering (source: sdk_gphone64_x86_64 [USB] (emulator-5554))
 ```
 
-There are no receive timeouts in a 60 s session, the virtual camera draws the
-stream, and an audio starve test (15 connect/close cycles back to back) leaves
-no leaked threads or clients behind.
+There is no `error decoding video`, the client window renders the camera at
+30 fps, and the audio mixer lists the source.
+
+The same source in the client's JPEG format (`video_format=1`, logged as
+`video_format=jpg`) requests `GET /v5/video/jpg/1280x720/...` instead. The
+server's packets are complete baseline JPEGs and the client logs
+`mjpeg stream is 1280x720 subsamp 2 colorspace 1` and renders them at 30 fps.
+Both formats were exercised back to back; the source was then restored to AVC.
+
+The first 7.2.1 run did fail with `[DroidCamOBS] error decoding video` right
+after a 22-byte config. The config contained one NAL, an SPS, because the
+emulator encoder reports `csd-0` (SPS) and `csd-1` (PPS) separately, and the
+server only forwarded `csd-0`. The client concatenates the config blob with the
+first access unit and hands it to FFmpeg, so without a PPS the IDR was
+unparseable. `AvcEncoder` now concatenates `csd-0`, `csd-1` and `csd-2`, which
+produces the 32-byte SPS+PPS config above.
+
+The u64 field in the 12-byte header is a microsecond presentation timestamp, not
+a packet counter. Its first media packet is zero and later packets advance with
+the encoder clock; the previous 1, 2, 3 counters made every frame appear to
+arrive within a few microseconds. JPEG and AAC use the same convention now:
+JPEG counts from the first frame of the connection, AAC advances 1024 samples
+per access unit.
+
+### Earlier interop session (DroidCam Client 6.5.3)
+
+An earlier build was exercised with DroidCam Client v6.5.3, run from the files
+its own installer unpacks. There were no receive timeouts in a 60 s session, the
+virtual camera drew the stream, and an audio starve test (15 connect/close
+cycles back to back) left no leaked threads or clients behind. The 22-byte
+config in that log was described as SPS+PPS; the 7.2.1 run shows that a 22-byte
+config from this encoder is SPS only, so that label was wrong even though the
+session worked with that client build.
 
 What those sockets turned out to speak, read from the client's own
 `droidcam-obs.dll` and confirmed packet by packet with `tests/fake_phone.py`:
@@ -216,10 +245,15 @@ What those sockets turned out to speak, read from the client's own
   payload. There is no status line and no multipart; the route starts the
   binary stream at once.
 - `format=avc` sends H.264 Annex-B access units. The first packet is a **config
-  packet** with tag `0xffffffffffffffff` carrying SPS+PPS, and the client
-  prepends it to every frame it decodes. Delta frames before the first key
-  frame are skipped, so a client that connects mid-GOP never decodes against
-  stale setup.
+  packet** with tag `0xffffffffffffffff` carrying SPS+PPS; the client
+  concatenates it with the next media packet and gives that buffer to FFmpeg.
+  Encoders differ in how they split the parameter sets across `csd-0`/`csd-1`,
+  so the server concatenates every `csd` buffer. Delta frames before the first
+  key frame are skipped, so a client that connects mid-GOP never decodes
+  against stale setup.
+- For media packets the u64 tag is a presentation time in microseconds, not a
+  sequence number. The first packet of a connection carries 0 and later tags
+  follow the encoder clock.
 - `format=jpg` sends JPEG packets with the same header and no config.
 - `/v2/audio` frames raw AAC-LC the same way: one config packet with the
   two-byte AudioSpecificConfig (`0x1188` = 48 kHz mono LC), then one packet per

@@ -18,6 +18,7 @@ import re
 import socket
 import struct
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -65,16 +66,24 @@ def put(path: str, timeout: float = 15.0) -> tuple[int, bytes]:
 
 
 def read_stream(path: str, seconds: float = 4.0, max_bytes: int = 4 << 20) -> bytes:
-    """Reads a chunked/streamed body for a fixed wall-clock window."""
+    """Reads a chunked/streamed body for a fixed wall-clock window.
+
+    Audio streams never idle, so a per-recv timeout alone would keep reading
+    until max_bytes (minutes for AAC). The deadline makes the window absolute.
+    """
     host, _, port = HOST.partition(":")
     s = socket.create_connection((host, int(port)), timeout=10)
+    deadline = time.monotonic() + seconds
     try:
         s.sendall(
             f"GET {path} HTTP/1.0\r\nHost: {HOST}\r\nConnection: close\r\n\r\n".encode()
         )
-        s.settimeout(seconds)
         buf = io.BytesIO()
         while buf.tell() < max_bytes:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            s.settimeout(remaining)
             try:
                 chunk = s.recv(65536)
             except socket.timeout:

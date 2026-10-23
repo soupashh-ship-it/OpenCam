@@ -501,30 +501,37 @@ class HttpServer(private val hub: StreamHub, private val control: ControlSurface
     }
 
     /**
-     * JPEG frames as plain packets, one per frame, id counting up from 1.
-     * The path carries the size the client wants, the same way the multipart
-     * route does.
+     * JPEG frames as plain packets, one per frame, with the u64 field carrying
+     * the frame's microsecond presentation time. The path carries the size the
+     * client wants, the same way the multipart route does.
      */
     private fun streamFramedJpeg(client: Client, out: BufferedOutputStream, path: String) {
         applySizeHint(path)
         val consumer = hub.addVideoConsumer()
         client.videoConsumer = consumer
         try {
-            var tag = 1L
+            // The stock client reads the id as a presentation time in
+            // microseconds; the first frame of a connection starts at zero.
+            var firstAtNs = -1L
             var frame = hub.lastFrame
             val deadline = System.currentTimeMillis() + 3000
             while (frame == null && System.currentTimeMillis() < deadline && running) {
                 Thread.sleep(20L)
                 frame = hub.lastFrame
             }
-            if (frame != null) writePacket(out, tag++, frame.jpeg)
+            if (frame != null) {
+                firstAtNs = System.nanoTime()
+                writePacket(out, 0L, frame.jpeg)
+            }
             while (running && !client.finished) {
                 val next = consumer.next(1000L)
                 if (next == null) {
                     if (peerGone(client)) break
                     continue
                 }
-                writePacket(out, tag++, next.jpeg)
+                if (firstAtNs < 0) firstAtNs = System.nanoTime()
+                val tag = (System.nanoTime() - firstAtNs) / 1000L
+                writePacket(out, tag, next.jpeg)
             }
         } catch (_: Exception) {
         } finally {
@@ -563,7 +570,7 @@ class HttpServer(private val hub: StreamHub, private val control: ControlSurface
             }
             writeConfigPacket(out, config)
             Log.i(TAG, "avc stream: config ${config.size}, waiting for key frame")
-            var tag = 1L
+            var basePtsUs = -1L
             var started = false
             var skipped = 0L
             var seen: ByteArray = config
@@ -588,9 +595,11 @@ class HttpServer(private val hub: StreamHub, private val control: ControlSurface
                         continue
                     }
                     started = true
+                    basePtsUs = unit.ptsUs
                     Log.i(TAG, "avc stream: first key frame after $skipped skipped")
                 }
-                writePacket(out, tag++, unit.data)
+                val tag = (unit.ptsUs - basePtsUs).coerceAtLeast(0L)
+                writePacket(out, tag, unit.data)
                 sent++
             }
         } catch (_: Exception) {
@@ -615,7 +624,9 @@ class HttpServer(private val hub: StreamHub, private val control: ControlSurface
             // its decoder set up even if the codec takes a moment to come up.
             writeConfigPacket(out, encoder.audioSpecificConfig())
             encoder.start()
-            var tag = 1L
+            // Media packets carry a microsecond presentation time. AAC-LC emits
+            // 1024 samples per access unit, so the clock advances per unit.
+            var samples = 0L
             val produced = ArrayList<ByteArray>(8)
             while (running && !client.finished) {
                 val block = consumer.next(1000L)
@@ -625,7 +636,10 @@ class HttpServer(private val hub: StreamHub, private val control: ControlSurface
                 }
                 produced.clear()
                 encoder.encode(block, block.size, produced, adts = false)
-                for (frame in produced) writePacket(out, tag++, frame, flush = false)
+                for (frame in produced) {
+                    writePacket(out, samples * 1_000_000L / AUDIO_RATE, frame, flush = false)
+                    samples += AAC_FRAME_SAMPLES
+                }
                 if (produced.isNotEmpty()) out.flush()
             }
         } catch (_: Exception) {
@@ -1114,6 +1128,10 @@ class HttpServer(private val hub: StreamHub, private val control: ControlSurface
 
         private const val HEAD_WAIT_MS = 5000
         private const val HEAD_IDLE_MS = 300
+
+        /** Samples per AAC-LC access unit, used to pace the audio timestamps. */
+        private const val AAC_FRAME_SAMPLES = 1024L
+        private const val AUDIO_RATE = 48000L
 
         private val SIZE_REGEX = Regex("""/(\d{3,4})x(\d{3,4})(/|$)""")
 

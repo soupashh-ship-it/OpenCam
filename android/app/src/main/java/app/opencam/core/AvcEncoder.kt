@@ -6,7 +6,7 @@ import android.media.MediaFormat
 import android.os.Bundle
 import android.util.Log
 import android.view.Surface
-import java.nio.ByteBuffer
+import java.io.ByteArrayOutputStream
 
 /**
  * H.264 encoder backing the stock client's avc format.
@@ -79,6 +79,7 @@ class AvcEncoder(
     private fun drainLoop() {
         var frames = 0L
         var lastSyncRequest = 0L
+        var firstPtsUs = -1L
         while (running) {
             val c = codec ?: break
             try {
@@ -99,13 +100,10 @@ class AvcEncoder(
                 val index = c.dequeueOutputBuffer(info, 10_000L)
                 when {
                     index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        // csd-0 is the annex-B SPS+PPS the client wants up front.
-                        val csd: ByteBuffer? = c.outputFormat.getByteBuffer("csd-0")
-                        if (csd != null && csd.remaining() > 0) {
-                            val bytes = ByteArray(csd.remaining())
-                            csd.get(bytes)
-                            Log.i(TAG, "output format, csd=${bytes.size} bytes")
-                            onConfig?.invoke(bytes)
+                        val config = codecSpecificData(c.outputFormat)
+                        if (config.isNotEmpty()) {
+                            Log.i(TAG, "output format, csd=${config.size} bytes")
+                            onConfig?.invoke(config)
                         }
                     }
                     index >= 0 -> {
@@ -117,10 +115,12 @@ class AvcEncoder(
                             buf.limit(info.offset + info.size)
                             buf.get(data)
                             val keyframe = info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
+                            if (firstPtsUs < 0) firstPtsUs = info.presentationTimeUs
+                            val ptsUs = (info.presentationTimeUs - firstPtsUs).coerceAtLeast(0L)
                             if (++frames % 60 == 0L) {
                                 Log.i(TAG, "encoded $frames frames")
                             }
-                            onAccessUnit?.invoke(data, keyframe, info.presentationTimeUs)
+                            onAccessUnit?.invoke(data, keyframe, ptsUs)
                         }
                         c.releaseOutputBuffer(index, false)
                     }
@@ -132,6 +132,31 @@ class AvcEncoder(
             }
         }
     }
+
+    /**
+     * Annex-B SPS+PPS from the encoder's output format. Encoders are not
+     * consistent about where the parameter sets live: most put both in csd-0,
+     * but some (including the emulator's encoder) put the SPS in csd-0 and the
+     * PPS in csd-1. Concatenate every csd buffer, adding a start code where the
+     * buffer does not already carry one.
+     */
+    private fun codecSpecificData(format: MediaFormat): ByteArray {
+        val out = ByteArrayOutputStream(64)
+        for (key in CSD_KEYS) {
+            val buffer = format.getByteBuffer(key)?.duplicate() ?: continue
+            if (buffer.remaining() <= 0) continue
+            val piece = ByteArray(buffer.remaining()).also { buffer.get(it) }
+            if (!hasStartCode(piece)) out.write(START_CODE)
+            out.write(piece)
+        }
+        return out.toByteArray()
+    }
+
+    private fun hasStartCode(data: ByteArray): Boolean =
+        (data.size >= 4 && data[0] == 0.toByte() && data[1] == 0.toByte() &&
+            data[2] == 0.toByte() && data[3] == 1.toByte()) ||
+            (data.size >= 3 && data[0] == 0.toByte() && data[1] == 0.toByte() &&
+                data[2] == 1.toByte())
 
     fun stop() {
         running = false
@@ -156,5 +181,8 @@ class AvcEncoder(
         const val MIME = "video/avc"
         const val TAG = "OpenCam/Avc"
         const val SYNC_FRAME_INTERVAL_MS = 1_000L
+
+        private val CSD_KEYS = listOf("csd-0", "csd-1", "csd-2")
+        private val START_CODE = byteArrayOf(0, 0, 0, 1)
     }
 }
