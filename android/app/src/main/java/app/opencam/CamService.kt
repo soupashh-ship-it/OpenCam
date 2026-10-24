@@ -154,8 +154,7 @@ class CamService : Service(), ControlSurface {
 
         val preset = CamCaps.preset(prefs.resolution)
         camera.start(prefs.cameraFacing, preset.width, preset.height, prefs.fps)
-        camera.settings.mirror = prefs.mirrorFront &&
-            prefs.cameraFacing == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT
+        camera.settings.mirror = prefs.mirrorFront
         camera.settings.flipVertical = prefs.flipVertical
         camera.settings.micEnabled = prefs.audioEnabled
         camera.applySettings(camera.settings)
@@ -216,20 +215,18 @@ class CamService : Service(), ControlSurface {
 
     // ------------------------------------------------------------- UI attach/detach
 
-    fun attachPreview(holder: android.view.SurfaceHolder) {
+    fun attachPreview(texture: android.graphics.SurfaceTexture, width: Int, height: Int) {
         previewAttached = true
-        camera.attachPreview(holder)
-        if (running) {
-            val preset = CamCaps.preset(prefs.resolution)
-            camera.restart(
-                prefs.cameraFacing, preset.width, preset.height, prefs.fps
-            )
-        }
+        // The engine rebuilds the capture session itself when a session is
+        // already running; the camera device stays open so streaming resumes
+        // without a full open/close cycle.
+        camera.attachPreview(texture, width, height)
     }
 
     fun detachPreview() {
         if (!previewAttached) return
         previewAttached = false
+        // The engine drops the dead output surface by rebuilding the session.
         camera.detachPreview()
     }
 
@@ -265,8 +262,7 @@ class CamService : Service(), ControlSurface {
         if (changed) {
             camera.restart(facing, preset.width, preset.height, prefs.fps)
         }
-        camera.settings.mirror = prefs.mirrorFront &&
-            facing == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT
+        camera.settings.mirror = prefs.mirrorFront
         camera.settings.flipVertical = prefs.flipVertical
         camera.applySettings(camera.settings)
 

@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.graphics.Rect
+import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
@@ -23,7 +24,6 @@ import android.util.Range
 import android.util.Size
 import android.view.Display
 import android.view.Surface
-import android.view.SurfaceHolder
 import android.view.WindowManager
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
@@ -69,8 +69,27 @@ class CameraEngine(private val context: Context) {
     private var chars: CameraCharacteristics? = null
     private var avc: AvcEncoder? = null
 
-    private var previewSurface: Surface? = null
-    private var previewHolder: SurfaceHolder? = null
+    @Volatile private var previewSurface: Surface? = null
+    @Volatile private var previewTexture: SurfaceTexture? = null
+
+    /**
+     * Outputs the current capture session was actually configured with. Capture
+     * requests may only target these surfaces; Camera2 rejects a request that
+     * mentions anything else with "unconfigured Input/Output Surface".
+     */
+    private var configuredPreview: Surface? = null
+    private var configuredReader: Surface? = null
+    private var configuredAvc: Surface? = null
+
+    /** Invalidates callbacks from a session that has since been replaced. */
+    @Volatile private var sessionGeneration = 0
+
+    /**
+     * Preview surfaces replaced while a capture session still referenced them.
+     * They are released only after the session is closed, because releasing an
+     * in-use output surface can tear down the whole session.
+     */
+    private val stalePreviewSurfaces = ArrayList<Surface>()
 
     private val released = AtomicBoolean(true)
     private val frames = FrameStats()
@@ -87,13 +106,89 @@ class CameraEngine(private val context: Context) {
 
     // ---------------------------------------------------------------- lifecycle
 
-    fun attachPreview(holder: SurfaceHolder) {
-        previewHolder = holder
-        previewSurface = holder.surface
+    /**
+     * Points the preview at a [SurfaceTexture] owned by the activity. The
+     * texture is sized to the stream buffer so the preview does not force a
+     * second, differently shaped capture output.
+     *
+     * If a capture session is already running it is rebuilt in the background
+     * with the new output, because Camera2 cannot add a surface to an existing
+     * session. The camera device stays open, so streaming only pauses briefly.
+     */
+    fun attachPreview(texture: SurfaceTexture, width: Int, height: Int) {
+        if (width > 0 && height > 0) texture.setDefaultBufferSize(width, height)
+        previewTexture = texture
+        val surface = Surface(texture)
+        val previous = previewSurface
+        previewSurface = surface
+        if (previous != null) queueStalePreviewSurface(previous)
+        requestPreviewSessionRebuild()
     }
 
     fun detachPreview() {
+        previewTexture = null
+        val previous = previewSurface ?: return
         previewSurface = null
+        queueStalePreviewSurface(previous)
+        requestPreviewSessionRebuild()
+    }
+
+    private fun queueStalePreviewSurface(surface: Surface) {
+        synchronized(stalePreviewSurfaces) {
+            stalePreviewSurfaces.add(surface)
+        }
+    }
+
+    private fun releaseStalePreviewSurfaces() {
+        val pending: List<Surface>
+        synchronized(stalePreviewSurfaces) {
+            if (stalePreviewSurfaces.isEmpty()) return
+            pending = ArrayList(stalePreviewSurfaces)
+            stalePreviewSurfaces.clear()
+        }
+        for (surface in pending) {
+            try {
+                surface.release()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /**
+     * Rebuilds the capture session when the preview output changed. The device
+     * is intentionally left open: only the session and its per-session outputs
+     * (reader, encoder) are replaced.
+     */
+    private fun requestPreviewSessionRebuild() {
+        val h = handler
+        if (released.get() || h == null) {
+            if (released.get()) releaseStalePreviewSurfaces()
+            return
+        }
+        h.post { rebuildSession() }
+    }
+
+    private fun rebuildSession() {
+        if (released.get() || device == null) {
+            releaseStalePreviewSurfaces()
+            return
+        }
+        sessionGeneration++
+        try {
+            session?.close()
+        } catch (_: Exception) {
+        }
+        session = null
+        reader?.close()
+        reader = null
+        avc?.stop()
+        avc = null
+        configuredPreview = null
+        configuredReader = null
+        configuredAvc = null
+        // No session can be referencing the replaced preview surfaces any more.
+        releaseStalePreviewSurfaces()
+        createSession()
     }
 
     /**
@@ -121,6 +216,7 @@ class CameraEngine(private val context: Context) {
 
     fun stop() {
         if (!released.compareAndSet(false, true)) return
+        sessionGeneration++
         try {
             session?.close()
         } catch (_: Exception) {
@@ -136,6 +232,7 @@ class CameraEngine(private val context: Context) {
         avc?.stop()
         avc = null
         chars = null
+        releaseStalePreviewSurfaces()
         stopThread()
     }
 
@@ -245,14 +342,18 @@ class CameraEngine(private val context: Context) {
 
     private fun createSession() {
         val cam = device ?: return
+        if (released.get()) return
+        val generation = ++sessionGeneration
         val readerLocal = ImageReader.newInstance(
             settings.width, settings.height, android.graphics.ImageFormat.JPEG, 3
         )
         reader = readerLocal
         readerLocal.setOnImageAvailableListener({ r -> onImageAvailable(r) }, handler)
 
+        val preview = previewSurface
+        previewTexture?.setDefaultBufferSize(settings.width, settings.height)
         val surfaces = ArrayList<Surface>(3)
-        previewSurface?.let { if (it.isValid) surfaces.add(it) }
+        if (preview != null && preview.isValid) surfaces.add(preview)
         surfaces.add(readerLocal.surface)
 
         // The H.264 encoder shares the capture session; its surface feeds the
@@ -264,16 +365,43 @@ class CameraEngine(private val context: Context) {
         avc = if (started) encoder else null
         if (started) encoder.inputSurface?.let { surfaces.add(it) }
 
+        configuredPreview = if (preview != null && preview.isValid) preview else null
+        configuredReader = readerLocal.surface
+        configuredAvc = if (started) encoder.inputSurface else null
+
         try {
             cam.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(s: CameraCaptureSession) {
+                    // A stop or a newer rebuild happened while this session was
+                    // being configured; that session must not be used.
+                    if (released.get() || generation != sessionGeneration) {
+                        try {
+                            s.close()
+                        } catch (_: Exception) {
+                        }
+                        return
+                    }
                     session = s
+                    // The preview may have changed while this session was being
+                    // configured. Rebuild once with the surface that is current
+                    // now instead of sending a request the session cannot accept.
+                    val currentPreview = previewSurface?.takeIf { it.isValid }
+                    if (currentPreview !== configuredPreview) {
+                        rebuildSession()
+                        return
+                    }
                     applySettings(settings)
                     listener?.onEngineState("streaming")
                 }
 
                 override fun onConfigureFailed(s: CameraCaptureSession) {
-                    listener?.onEngineError("Capture session failed")
+                    try {
+                        s.close()
+                    } catch (_: Exception) {
+                    }
+                    if (generation == sessionGeneration) {
+                        listener?.onEngineError("Capture session failed")
+                    }
                 }
             }, handler)
         } catch (e: Exception) {
@@ -288,18 +416,18 @@ class CameraEngine(private val context: Context) {
      */
     fun applySettings(s: CameraSettings) {
         val cam = device ?: return
-        val sess = session ?: return
         val c = chars ?: return
         val h = handler ?: return
         h.post {
             // A client can disconnect a control change in flight, in which case the
             // device has already been closed and a repeating request would throw.
             if (released.get()) return@post
+            val sess = session ?: return@post
             try {
                 val builder = cam.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-                previewSurface?.let { builder.addTarget(it) }
-                reader?.let { builder.addTarget(it.surface) }
-                avc?.inputSurface?.let { builder.addTarget(it) }
+                configuredPreview?.let { builder.addTarget(it) }
+                configuredReader?.let { builder.addTarget(it) }
+                configuredAvc?.let { builder.addTarget(it) }
                 populate(builder, c, s)
                 sess.setRepeatingRequest(builder.build(), null, h)
                 listener?.onSettingsChanged(s)
@@ -444,14 +572,15 @@ class CameraEngine(private val context: Context) {
     /** One-shot autofocus, used by the AF button and the control endpoint. */
     fun triggerAutofocus() {
         val cam = device ?: return
-        val sess = session ?: return
         val h = handler ?: return
         h.post {
+            if (released.get()) return@post
+            val sess = session ?: return@post
             try {
                 val b = cam.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-                previewSurface?.let { b.addTarget(it) }
-                reader?.let { b.addTarget(it.surface) }
-                avc?.inputSurface?.let { b.addTarget(it) }
+                configuredPreview?.let { b.addTarget(it) }
+                configuredReader?.let { b.addTarget(it) }
+                configuredAvc?.let { b.addTarget(it) }
                 chars?.let { populate(b, it, settings) }
                 b.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START)
                 sess.capture(b.build(), null, h)

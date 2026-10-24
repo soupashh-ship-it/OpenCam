@@ -30,7 +30,7 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean(K_AUDIO, v).apply()
 
     var mirrorFront: Boolean
-        get() = sp.getBoolean(K_MIRROR, true)
+        get() = sp.getBoolean(K_MIRROR, false)
         set(v) = sp.edit().putBoolean(K_MIRROR, v).apply()
 
     var keepAwake: Boolean
@@ -64,7 +64,7 @@ class Prefs(context: Context) {
             .putInt(K_FPS, 30)
             .putInt(K_FACING, 0)
             .putBoolean(K_AUDIO, true)
-            .putBoolean(K_MIRROR, true)
+            .putBoolean(K_MIRROR, false)
             .putBoolean(K_AWAKE, true)
             .putBoolean(K_DISCOVERY, true)
             .putBoolean(K_GRID, false)

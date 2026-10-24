@@ -3,13 +3,27 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/windowBg">
+    android:background="@android:color/black">
 
-    <SurfaceView
-        android:id="@+id/camera_surface"
+    <!-- Full-bleed preview. PreviewLayout keeps the image aspect-correct and
+         owns the rule-of-thirds overlay so the grid only covers the image. -->
+    <app.opencam.view.PreviewLayout
+        android:id="@+id/preview_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="center" />
+        android:layout_height="match_parent">
+
+        <app.opencam.view.PreviewTextureView
+            android:id="@+id/camera_surface"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/camera_preview" />
+
+        <app.opencam.view.GridOverlayView
+            android:id="@+id/camera_grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </app.opencam.view.PreviewLayout>
 
     <!-- top-left connection / stats readout -->
     <LinearLayout
@@ -17,7 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start|top"
-        android:layout_margin="12dp"
+        android:layout_margin="10dp"
         android:orientation="vertical">
 
         <TextView
@@ -28,7 +42,7 @@
             android:focusable="true"
             android:gravity="center_vertical"
             android:textAllCaps="true"
-            android:textColor="@color/linkText"
+            android:textColor="@color/colorAccent"
             android:visibility="gone" />
 
         <LinearLayout
@@ -36,13 +50,15 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/tally_info"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
-                android:contentDescription="@string/hash"
-                android:src="@drawable/ic_tally_idle" />
+                android:drawableStart="@drawable/ic_tally_idle"
+                android:drawablePadding="4dp"
+                android:gravity="center_vertical"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/connection_info_peer"
@@ -69,18 +85,18 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textColor="@color/linkText"
+            android:textColor="@color/colorAccent"
             android:visibility="invisible" />
     </LinearLayout>
 
-    <!-- top-right action bar -->
+    <!-- top-right action bar: collapsed to More until streaming reveals the extras -->
     <LinearLayout
         android:id="@+id/button_bar_top"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|top"
-        android:layout_margin="4dp"
-        android:padding="4dp">
+        android:padding="4dp"
+        android:visibility="gone">
 
         <ImageButton
             android:id="@+id/mic_toggle"
@@ -88,7 +104,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/mute_sound"
-            android:src="@drawable/ic_mic_on" />
+            android:src="@drawable/ic_mic_on"
+            android:visibility="invisible" />
 
         <ImageButton
             android:id="@+id/camera_crop"
@@ -96,7 +113,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/c"
-            android:src="@drawable/ic_crop_sm" />
+            android:src="@drawable/ic_crop_sm"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/grid_toggle"
@@ -104,7 +122,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/hash"
-            android:src="@drawable/ic_grid" />
+            android:src="@drawable/ic_grid"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/camera_vflip"
@@ -112,7 +131,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/v"
-            android:src="@drawable/ic_flip_v" />
+            android:src="@drawable/ic_flip_v"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/camera_hflip"
@@ -120,7 +140,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/m"
-            android:src="@drawable/ic_flip_h" />
+            android:src="@drawable/ic_flip_h"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/settings_button"
@@ -128,7 +149,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/settings"
-            android:src="@drawable/ic_gear" />
+            android:src="@drawable/ic_gear"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/camera_more_toggle"
@@ -136,7 +158,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/other"
-            android:src="@drawable/ic_info" />
+            android:src="@drawable/ic_more" />
 
         <Button
             android:id="@+id/stop_button"
@@ -284,8 +306,9 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- centre: start panel and connect hint -->
+    <!-- idle / connect hint stack, hidden while a client is attached -->
     <LinearLayout
+        android:id="@+id/idle_panel"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
@@ -302,55 +325,37 @@
             android:text="@string/e_perms"
             android:visibility="gone" />
 
-        <LinearLayout
-            android:id="@+id/info_panel"
+        <TextView
+            android:id="@+id/info_text"
+            style="@style/FontBold"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
             android:layout_marginTop="4dp"
             android:layout_marginEnd="10dp"
-            android:orientation="vertical"
+            android:background="@drawable/white_border"
             android:padding="16dp"
-            android:background="@drawable/white_border">
+            android:text="@string/app_name"
+            android:textColor="@android:color/white" />
 
-            <TextView
-                android:id="@+id/info_text"
-                style="@style/FontBold"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name" />
+        <Button
+            android:id="@+id/btn_start_stop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:drawableStart="@drawable/ic_play"
+            android:drawablePadding="6dp"
+            android:text="@string/start" />
 
-            <TextView
-                android:id="@+id/info_detail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/idle_hint"
-                android:textSize="14sp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btn_start_stop"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_play"
-                    android:drawablePadding="6dp"
-                    android:text="@string/start" />
-
-                <Button
-                    android:id="@+id/btn_open_settings"
-                    style="@style/Borderless"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:text="@string/settings" />
-            </LinearLayout>
-        </LinearLayout>
+        <Button
+            android:id="@+id/btn_open_settings"
+            style="@style/Borderless"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings" />
 
         <ImageView
             android:id="@+id/connect_hint_img"
@@ -358,17 +363,21 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="32dp"
+            android:alpha="0"
             android:contentDescription="@string/pc_webcam"
-            android:src="@drawable/ic_laptop_sm" />
+            android:src="@drawable/ic_laptop_sm"
+            android:visibility="invisible" />
 
         <TextView
             android:id="@+id/connect_hint_txt"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
+            android:alpha="0"
             android:gravity="center_horizontal"
             android:text="@string/connect_hint"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:visibility="invisible" />
 
         <Button
             android:id="@+id/btn_app_settings"
