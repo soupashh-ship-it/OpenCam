@@ -23,7 +23,7 @@
 
   <Package Name="OpenCam"
            Manufacturer="OpenCam"
-           Version="1.0.1"
+           Version="1.0.2"
            UpgradeCode="7B2F1C6A-9D34-4E58-8A1B-2C7D6E9F30A1"
            Scope="perMachine">
 

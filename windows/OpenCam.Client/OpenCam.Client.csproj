@@ -15,7 +15,7 @@
     <SelfContained>false</SelfContained>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Product>OpenCam</Product>
     <AssemblyTitle>OpenCam</AssemblyTitle>
     <Company>OpenCam</Company>
